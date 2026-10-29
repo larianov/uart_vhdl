@@ -1,0 +1,6 @@
+db
+.sigasi
+project.sigasi
+output_files
+incremental_db
+*.bak
