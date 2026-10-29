@@ -1,7 +1,0 @@
-v 4
-file . "fifo_tb.vhd" "6d8b3ae883835774fd10c6de9a224bbf3361c931" "20261029172825.383":
-  entity fifo_tb at 1( 0) + 0 on 45;
-  architecture sim of fifo_tb at 9( 133) + 0 on 46;
-file . "fifo.vhd" "9c2918c9c2af46f40a35c3950b7b1c85e840d399" "20261029172825.381":
-  entity fifo at 1( 0) + 0 on 43;
-  architecture rtl of fifo at 32( 670) + 0 on 44;
