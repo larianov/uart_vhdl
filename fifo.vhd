@@ -7,7 +7,8 @@ entity fifo is
     generic(
         byte_size : integer := 8;
         fifo_size : integer := 16;
-        threshold : integer := 0
+        threshold : integer := 0;
+        force_wrap : std_logic := '0'
     );
     port(
         push : in std_logic;
@@ -35,6 +36,7 @@ architecture rtl of fifo is
     signal size : natural range 0 to fifo_size := 0;
     signal read : natural range 0 to fifo_size-1 := 0;
     signal write : natural range 0 to fifo_size-1 := 0;    
+    
 begin
     clocking : process(clk)
         begin
@@ -43,11 +45,20 @@ begin
                     size <= 0;
                     read <= 0;
                     write <= 0;
+                    byte_out_pl <= (others => '0');
                     push_err <= '0';
                     pop_err <= '0';
                 else
                     if push = '1' then
-                        if size < fifo_size or pop = '1' then
+                        if size < fifo_size or pop = '1' or force_wrap = '1' then
+                            if ((write = read and size /= 0) and force_wrap = '1') and pop = '0' then
+                                if write = fifo_size-1 then
+                                    read <= 0;
+                                else
+                                    read <= write+1;
+                                end if;
+                            end if;
+                            
                             push_err <= '0';
                             fifo_buff(write) <= byte_pl;
                             if write = fifo_size-1 then
