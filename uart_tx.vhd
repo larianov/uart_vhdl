@@ -26,11 +26,13 @@ architecture RTL of uart_tx is
 signal data :std_logic_vector(hi+en_pairity downto lo) := (others => '0');
 signal start : std_logic := '0';
 signal busy : std_logic := '0';
-type tx_t is (IDLE, DATA_OP, EOF);
+type tx_t is (IDLE, DATA_OP, WAIT_SENDER, EOF);
 signal state : tx_t;
 signal first_start_front : STD_LOGIC := '0';
-signal second_start_front : std_logic := '1'; 
+signal second_start_front : std_logic := '0'; 
 signal letter_counter : integer range 0 to strdata'length+1 := 1;
+signal last_start_front : std_logic := '0';
+
 
 
 
@@ -63,13 +65,15 @@ begin
                     when IDLE =>
                         second_start_front <= first_start_front;
                         first_start_front <= start_transmitting;
-                        if second_start_front = '1' then
+                        letter_counter <= 1;
+                        if second_start_front = '1' and last_start_front = '0' then
                             state <= DATA_OP;
                             busy_wait <= '1';
                         end if;
                     when DATA_OP =>
                         if letter_counter > strdata'length then
                             state <= EOF;
+                            start <= '0';
                         elsif busy = '0' then
                             temp_d := STD_LOGIC_VECTOR(to_unsigned(character'pos(strdata(letter_counter)), temp_d'length));
                             if en_pairity = 1 then
@@ -87,13 +91,19 @@ begin
                             end if;
                             start <= '1';
                             letter_counter <= letter_counter+1;
+                            state <= WAIT_SENDER;
                         else
                             start <= '0';
                         end if;
-
+                    when WAIT_SENDER =>
+                        if busy = '1' then
+                            state <= DATA_OP;
+                        end if;
                     when EOF =>
                         busy_wait <= '0';
+                        state <= IDLE;
                 end case;
+                last_start_front <= second_start_front;
             end if;
     end process clocking;
 end architecture RTL;

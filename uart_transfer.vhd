@@ -24,6 +24,7 @@ architecture RTL of uart_transfer is
     signal timer_counter : unsigned(31 downto 0) := (others => '0');
     signal last_start : STD_LOGIC := '0';
     signal started_transmission : STD_LOGIC := '0';
+    signal data_copy : std_logic_vector(hi downto lo);
     signal bit_counter : natural range lo to hi+1 := 0;
     type state_transfering_t is (IDLE, START_TRANSMISSION, DATA_OP, STOP_TRANSMISSION);
     signal state : state_transfering_t;
@@ -37,6 +38,7 @@ begin
                         timer_counter <= (others => '0');
                         bit_counter <= 0;
                         state <= START_TRANSMISSION;
+                        data_copy <= data;
                         started_transmission <= '1';
                     else
                         tx <= '1';
@@ -52,13 +54,13 @@ begin
                         timer_counter <= timer_counter+1;
                     end if;
                 when DATA_OP =>
-                    if timer_counter >= clk_rate+1 then
+                    if timer_counter >= clk_rate then
                         if bit_counter = hi+1 then
                             state <= STOP_TRANSMISSION;
                             timer_counter <= (others => '0');
                             bit_counter <= 0;
                         else
-                            tx <= data(bit_counter);
+                            tx <= data_copy(bit_counter);
                             bit_counter <= bit_counter + 1;
                             timer_counter <= (others => '0');
                         end if;
@@ -66,7 +68,7 @@ begin
                         timer_counter <= timer_counter+1;
                     end if;
                 when STOP_TRANSMISSION =>
-                    if timer_counter >= clk_rate+1 then
+                    if timer_counter >= clk_rate then
                         bit_counter <= bit_counter+1;
                         if bit_counter = stop_bits then
                             state <= IDLE;
