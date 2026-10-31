@@ -12,7 +12,7 @@ architecture sim of uart_rx_tb is
   constant BAUD       : positive  := 115200;
   constant DATA_BITS  : integer   := 8;
   constant STOP_BITS  : integer   := 1;
-  constant EN_PARITY  : std_logic := '1';
+  constant EN_PARITY  : integer := 1;
   constant PARITY_T   : std_logic := '0';
   constant FIFO_SIZE  : integer   := 16;
   constant THRESHOLD  : integer   := 4;
@@ -39,7 +39,7 @@ architecture sim of uart_rx_tb is
 
   function frame_bits return integer is
   begin
-    if EN_PARITY = '1' then
+    if EN_PARITY = 1 then
       return 2 + DATA_BITS + STOP_BITS;
     end if;
     return 1 + DATA_BITS + STOP_BITS;
@@ -195,7 +195,7 @@ begin
       for i in 0 to DATA_BITS-1 loop
         lv(1 + i) := bits(i);
       end loop;
-      if EN_PARITY = '1' then
+      if EN_PARITY = 1 then
         if parity_ok then
           lv(1 + DATA_BITS) := parity_bit(val);
         else
@@ -413,7 +413,7 @@ begin
       rand_int(0, 2, k);
       if k = 0 then
         bad_frame(v, false);
-      elsif k = 1 and EN_PARITY = '1' then
+      elsif k = 1 and EN_PARITY = 1 then
         bad_frame(v, true);
       else
         good_frame(v);
@@ -477,7 +477,7 @@ begin
       uniform(seed1, seed2, r);
       if r < 0.08 then
         bad_frame(v, false);
-      elsif r < 0.16 and EN_PARITY = '1' then
+      elsif r < 0.16 and EN_PARITY = 1 then
         bad_frame(v, true);
       else
         if r > 0.6 then

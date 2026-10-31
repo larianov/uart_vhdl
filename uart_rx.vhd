@@ -8,7 +8,7 @@ entity uart_rx is
         baud : positive := 115200;
         amm_data_bits :integer := 8;
         amm_stop_bits : integer := 1;
-        en_pairity : STD_LOGIC := '0'; -- 0 for off, 1 for on
+        en_pairity : integer := 0; -- 0 for off, 1 for on
         pairity_t : std_logic := '0'; -- 0 for even, 1 for odd
         fifo_size : integer := 16;
         threshold : integer := 1  
@@ -107,7 +107,7 @@ begin
                     if clock_divider >= clk_rate then
                         byte_pl(bit_counter) <= rx_line;
                         if bit_counter = amm_data_bits - 1 then
-                            if en_pairity = '1' then
+                            if en_pairity = 1 then
                                 state <= PAIRITY;
                             else
                                 bit_counter <= 0;
