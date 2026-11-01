@@ -5,7 +5,7 @@ use ieee.numeric_std.all;
 entity uart is
     generic(
         freq : integer := 50000000;
-        baud : positive range 1 to 1500000 := 115200;
+        baud : positive range 1 to 10_000_000 := 115200;
         amm_data_bits : integer range 1 to 16 := 8;
         amm_stop_bits : integer range 1 to 4 := 1;
         en_pairity : integer := 0;

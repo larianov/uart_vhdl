@@ -45,17 +45,18 @@ architecture RTL of uart_main is
     type state_t is (READING, SENDING, SENT);
     signal state : state_t;
     signal popped : std_logic := '0';
+    signal bitt : integer := 0;
     
 
 begin
     uart_inst : entity work.uart
         generic map(
             freq              => 50000000,
-            baud              => 115200,
+            baud              => 2_000_000,
             amm_data_bits     => 8,
-            amm_stop_bits     => 1,
-            en_pairity        => 0,
-            pairity           => open,
+            amm_stop_bits     => 2,
+            en_pairity        => 1,
+            pairity           => '0',
             fifo_size         => 16,
             rx_treshold_level => 1
         )
@@ -78,69 +79,68 @@ begin
             rx_uart_err    => open,
             rx_water_level => open
     );
-
+    
     clocking : process(clk) is        
     begin
         if rising_edge(clk) then
-            rst <= '0';
-            case state is
-                when READING =>
-                    if window_string = str1 or window_string = str2 then
-                        if window_string = str1 then
-                            boolean_first_line <= FALSE;
-                        else
-                            boolean_first_line <= TRUE;
+                rst <= '0';
+                case state is
+                    when READING =>
+                        if window_string = str1 or window_string = str2 then
+                            if window_string = str1 then
+                                boolean_first_line <= FALSE;
+                            else
+                                boolean_first_line <= TRUE;
+                            end if;
+                            state <= SENDING;
+                        elsif rx_take_byte = '1' then
+                            rx_take_byte <= '0';
+                            popped <= '1';
+                        elsif popped = '1' then
+                            popped <= '0';
+                            window_string <= window_string(window_string'length-9 downto 0) & rx_byte_pl;
+                        elsif rx_fifo_empty = '0' then
+                            rx_take_byte <= '1';
                         end if;
-                        state <= SENDING;
-                    elsif rx_take_byte = '1' then
-                        rx_take_byte <= '0';
-                        popped <= '1';
-                    elsif popped = '1' then
-                        popped <= '0';
-                        window_string <= window_string(window_string'length-9 downto 0) & rx_byte_pl;
-                    elsif rx_fifo_empty = '0' then
-                        rx_take_byte <= '1';
-                    end if;
-                    
-                when SENDING =>
-                    if boolean_first_line then
-                        if byte_counter > orig_str1'length then
-                            state <= READING;
-                            tx_send_byte <= '0';
-                            byte_counter <= 1;
-                            window_string <= (others => '0');
+        
+                    when SENDING =>
+                        if boolean_first_line then
+                            if byte_counter > orig_str1'length then
+                                state <= READING;
+                                tx_send_byte <= '0';
+                                byte_counter <= 1;
+                                window_string <= (others => '0');
+                            else
+                                if tx_busy = '0' or tx_fifo_full = '0' then
+                                    tx_byte_pl <= STD_LOGIC_VECTOR(TO_UNSIGNED(character'pos(orig_str1(byte_counter)), 8));
+                                    byte_counter <= byte_counter+1;
+                                    tx_send_byte <= '1';
+                                    state <= SENT;
+                                end if;
+                            end if;
                         else
-                            if tx_busy = '0' or tx_fifo_full = '0' then
-                                tx_byte_pl <= STD_LOGIC_VECTOR(TO_UNSIGNED(character'pos(orig_str1(byte_counter)), 8));
-                                byte_counter <= byte_counter+1;
-                                tx_send_byte <= '1';
-                                state <= SENT;
+                             if byte_counter > orig_str2'length then
+                                state <= READING;
+                                tx_send_byte <= '0';
+                                byte_counter <= 1;
+                                window_string <= (others => '0');
+                            else
+                                if tx_busy = '0' or tx_fifo_full = '0' then          
+                                    tx_byte_pl <= STD_LOGIC_VECTOR(TO_UNSIGNED(character'pos(orig_str2(byte_counter)), 8));
+                                    byte_counter <= byte_counter+1;
+                                    tx_send_byte <= '1';
+                                    state <= SENT;
+                                end if;
                             end if;
                         end if;
-                    else
-                         if byte_counter > orig_str2'length then
-                            state <= READING;
-                            tx_send_byte <= '0';
-                            byte_counter <= 1;
-                            window_string <= (others => '0');
-                        else
-                            if tx_busy = '0' or tx_fifo_full = '0' then          
-                                tx_byte_pl <= STD_LOGIC_VECTOR(TO_UNSIGNED(character'pos(orig_str2(byte_counter)), 8));
-                                byte_counter <= byte_counter+1;
-                                tx_send_byte <= '1';
-                                state <= SENT;
-                            end if;
+                    when SENT =>
+                        tx_send_byte <= '0';
+                        if tx_busy = '1' then
+                            state <= SENDING;
                         end if;
-                    end if;
-                when SENT =>
-                    tx_send_byte <= '0';
-                    if tx_busy = '1' then
-                        state <= SENDING;
-                    end if;
-            end case;
+                end case;
         end if;
-        
-        
+    
+    
     end process clocking;
-
 end architecture RTL;
