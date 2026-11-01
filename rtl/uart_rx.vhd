@@ -31,7 +31,7 @@ end entity uart_rx;
 
 
 architecture RTL of uart_rx is
-    constant clk_rate : natural := freq / baud;
+    constant clk_rate : natural := (freq + baud/2)/baud;
     signal clock_divider : integer range 0 to clk_rate+1 := 0;
 
     type uart_rx_t is (INIT, IDLE, START, DATA, PAIRITY, STOP);
@@ -111,7 +111,7 @@ begin
                             clock_divider <= 1;
                         end if;
                     when DATA =>
-                        if clock_divider >= clk_rate then
+                        if clock_divider >= clk_rate-1 then
                             byte_pl(bit_counter) <= rx_line;
                             if bit_counter = amm_data_bits - 1 then
                                 if en_pairity = 1 then
@@ -128,7 +128,7 @@ begin
                             clock_divider <= clock_divider+1;
                         end if;    
                     when PAIRITY  =>
-                        if clock_divider >= clk_rate then
+                        if clock_divider >= clk_rate-1 then
                             pairity_bit := rx_line;
                             acc := '0';
                             for i in byte_pl'range loop
@@ -155,7 +155,7 @@ begin
                             clock_divider <= clock_divider+1;
                         end if;
                     when STOP =>
-                        if clock_divider >= clk_rate then
+                        if clock_divider >= clk_rate-1 then
                             if rx_line = '1' then
                                 if bit_counter = amm_stop_bits-1 then
                                     state <= IDLE;

@@ -21,13 +21,13 @@ entity uart_transfer is
 end uart_transfer;
 
 architecture RTL of uart_transfer is
-    constant clk_rate : integer := freq / baud;
+    constant clk_rate : natural := (freq + baud/2)/baud;
     signal timer_counter : unsigned(31 downto 0) := (others => '0');
     signal last_start : STD_LOGIC := '0';
     signal started_transmission : STD_LOGIC := '0';
     signal data_copy : std_logic_vector(hi downto lo);
     signal bit_counter : natural range lo to hi+1 := 0;
-    type state_transfering_t is (IDLE, START_TRANSMISSION, DATA_OP, STOP_TRANSMISSION);
+    type state_transfering_t is (IDLE, DATA_OP, STOP_TRANSMISSION);
     signal state : state_transfering_t;
 begin
     process(clk) begin
@@ -46,24 +46,14 @@ begin
                             tx <= '0';
                             timer_counter <= (others => '0');
                             bit_counter <= 0;
-                            state <= START_TRANSMISSION;
+                            state <= DATA_OP;
                             data_copy <= data;
                             started_transmission <= '1';
                         else
                             tx <= '1';
                         end if;
-                    when START_TRANSMISSION =>
-                        if timer_counter = 0 then
-                            tx <= '0';
-                            timer_counter <= timer_counter + 1;
-                        end if;
-                        if timer_counter >= clk_rate then
-                            state <= DATA_OP;
-                        else
-                            timer_counter <= timer_counter+1;
-                        end if;
                     when DATA_OP =>
-                        if timer_counter >= clk_rate then
+                        if timer_counter >= clk_rate-1 then
                             if bit_counter = hi+1 then
                                 state <= STOP_TRANSMISSION;
                                 tx <= '1';
@@ -78,7 +68,7 @@ begin
                             timer_counter <= timer_counter+1;
                         end if;
                     when STOP_TRANSMISSION =>
-                        if timer_counter >= clk_rate then
+                        if timer_counter >= clk_rate-1 then
                             bit_counter <= bit_counter+1;
                             if bit_counter = stop_bits-1 then
                                 state <= IDLE;
