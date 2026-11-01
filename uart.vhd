@@ -11,7 +11,7 @@ entity uart is
         en_pairity : integer := 0;
         pairity : STD_LOGIC := '0';
         fifo_size : integer range 1 to 16 := 16;
-        rx_treshold_level : integer range 0 to fifo_size := 1;
+        rx_treshold_level : integer range 0 to 16 := 1
     );
     port(
         clk : in std_logic;
@@ -24,8 +24,6 @@ entity uart is
         tx_fifo_full : out std_logic;
         tx_fifo_err : out std_logic;
         tx_busy : out std_logic;
-
-
         rx_enable : in std_logic;
         rx_line : in std_logic;
         place_for_rx : out std_logic_vector(amm_data_bits-1 downto 0);
@@ -52,6 +50,7 @@ begin
         )
         port map(
             clk       => clk,
+            rst       => rst,
             full      => tx_fifo_full,
             tx        => tx_line,
             push      => send_byte,
@@ -73,6 +72,7 @@ begin
         )
         port map(
             clk           => clk,
+            rst           => rst,
             rx_line_async => rx_line,
             data_byte     => place_for_rx,
             pop           => recieve_byte,

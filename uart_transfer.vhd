@@ -15,7 +15,8 @@ entity uart_transfer is
         start : in STD_LOGIC;
         clk : in Std_logic;
         busy : out STD_LOGIC;
-        tx : out STD_LOGIC
+        rst : in std_logic;
+        tx : out STD_LOGIC := '1'
     );
 end uart_transfer;
 
@@ -31,56 +32,66 @@ architecture RTL of uart_transfer is
 begin
     process(clk) begin
         if rising_edge(clk) then
-            case state is 
-                when IDLE =>
-                    if last_start = '0' and start = '1' and started_transmission /= '1' then
-                        tx <= '0';
-                        timer_counter <= (others => '0');
-                        bit_counter <= 0;
-                        state <= START_TRANSMISSION;
-                        data_copy <= data;
-                        started_transmission <= '1';
-                    else
-                        tx <= '1';
-                    end if;
-                when START_TRANSMISSION =>
-                    if timer_counter = 0 then
-                        tx <= '0';
-                        timer_counter <= timer_counter + 1;
-                    end if;
-                    if timer_counter >= clk_rate+1 then
-                        state <= DATA_OP;
-                    else
-                        timer_counter <= timer_counter+1;
-                    end if;
-                when DATA_OP =>
-                    if timer_counter >= clk_rate then
-                        if bit_counter = hi+1 then
-                            state <= STOP_TRANSMISSION;
+            if rst = '1' then
+                bit_counter <= 0;
+                data_copy <= (others => '0');
+                started_transmission <= '0';
+                timer_counter <= (others => '0');
+                tx <= '1';
+                state <= IDLE;
+            else
+                case state is 
+                    when IDLE =>
+                        if last_start = '0' and start = '1' and started_transmission /= '1' then
+                            tx <= '0';
                             timer_counter <= (others => '0');
                             bit_counter <= 0;
+                            state <= START_TRANSMISSION;
+                            data_copy <= data;
+                            started_transmission <= '1';
                         else
-                            tx <= data_copy(bit_counter);
-                            bit_counter <= bit_counter + 1;
+                            tx <= '1';
+                        end if;
+                    when START_TRANSMISSION =>
+                        if timer_counter = 0 then
+                            tx <= '0';
+                            timer_counter <= timer_counter + 1;
+                        end if;
+                        if timer_counter >= clk_rate then
+                            state <= DATA_OP;
+                        else
+                            timer_counter <= timer_counter+1;
+                        end if;
+                    when DATA_OP =>
+                        if timer_counter >= clk_rate then
+                            if bit_counter = hi+1 then
+                                state <= STOP_TRANSMISSION;
+                                tx <= '1';
+                                timer_counter <= (others => '0');
+                                bit_counter <= 0;
+                            else
+                                tx <= data_copy(bit_counter);
+                                bit_counter <= bit_counter + 1;
+                                timer_counter <= (others => '0');
+                            end if;
+                        else
+                            timer_counter <= timer_counter+1;
+                        end if;
+                    when STOP_TRANSMISSION =>
+                        if timer_counter >= clk_rate then
+                            bit_counter <= bit_counter+1;
+                            if bit_counter = stop_bits-1 then
+                                state <= IDLE;
+                                started_transmission <= '0';
+                            end if;
                             timer_counter <= (others => '0');
+                        else
+                            tx <= '1';
+                            timer_counter <= timer_counter+1;
                         end if;
-                    else
-                        timer_counter <= timer_counter+1;
-                    end if;
-                when STOP_TRANSMISSION =>
-                    if timer_counter >= clk_rate then
-                        bit_counter <= bit_counter+1;
-                        if bit_counter = stop_bits then
-                            state <= IDLE;
-                            started_transmission <= '0';
-                        end if;
-                        timer_counter <= (others => '0');
-                    else
-                        tx <= '1';
-                        timer_counter <= timer_counter+1;
-                    end if;
-            end case;
-            last_start <= start;   
+                end case;
+                last_start <= start;   
+            end if;
         end if;
     end process;
     busy <= started_transmission;

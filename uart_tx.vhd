@@ -14,6 +14,7 @@ entity uart_tx is
     );
     port(
         clk : in std_logic;
+        rst : in std_logic;
         full : out std_logic;
         tx : out std_logic;
         push : in std_logic;
@@ -31,7 +32,6 @@ signal start : std_logic := '0';
 signal busy : std_logic := '0';
 type tx_t is (IDLE, POPPING, DATA_OP, WAIT_SENDER, EOF);
 signal state : tx_t := IDLE;
-signal rst : std_logic := '1';
 signal empty : std_logic;
 signal pop : std_logic := '0';
 signal byte_out_pl : std_logic_vector(amm_data_bits-1 downto 0);
@@ -55,7 +55,8 @@ begin
             start => start,
             clk   => clk,
             busy  => busy,
-            tx    => tx
+            tx    => tx,
+            rst   => rst
         );
     
     fifo_uart : entity work.fifo
@@ -85,50 +86,57 @@ begin
         
         begin
             if rising_edge(clk) then
-                rst <= '0';
-                case state is
-                    when IDLE =>
-                        if uart_en = '1' and empty = '0' then
-                            state <= POPPING;
-                            pop <= '1';
-                            busy_wait <= '1';
-                        elsif busy = '1' then
-                            busy_wait <= '1';
-                        else
-                            busy_wait <= '0';
-                        end if;
-                    when POPPING =>
-                        pop <= '0';
-                        state <= DATA_OP;
-                    when DATA_OP =>
-                        if busy = '0' then
-                            temp_d := byte_out_pl;
-                            if en_pairity = 1 then
-                                acc := '0';
-                                for i in temp_d'range loop
-                                    acc := temp_d(i) xor acc;
-                                end loop;
-                                if pairity = '1' then
-                                    data <= (not acc) & temp_d;
-                                else
-                                    data <= (acc) & temp_d;                                    
-                                end if;
+                if rst = '1' then
+                    data <= (others => '0');
+                    start <= '0';
+                    busy_wait <= '0';
+                    pop <= '0';
+                    state <= IDLE;
+                else
+                    case state is
+                        when IDLE =>
+                            if uart_en = '1' and empty = '0' then
+                                state <= POPPING;
+                                pop <= '1';
+                                busy_wait <= '1';
+                            elsif busy = '1' then
+                                busy_wait <= '1';
                             else
-                                data <= temp_d;
+                                busy_wait <= '0';
                             end if;
-                            start <= '1';
-                            state <= WAIT_SENDER;
-                        else
-                            start <= '0';
-                        end if;
-                    when WAIT_SENDER =>
-                        if busy = '1' then
-                            start <= '0';
-                            state <= EOF;
-                        end if;
-                    when EOF =>
-                        state <= IDLE;
-                end case;
+                        when POPPING =>
+                            pop <= '0';
+                            state <= DATA_OP;
+                        when DATA_OP =>
+                            if busy = '0' then
+                                temp_d := byte_out_pl;
+                                if en_pairity = 1 then
+                                    acc := '0';
+                                    for i in temp_d'range loop
+                                        acc := temp_d(i) xor acc;
+                                    end loop;
+                                    if pairity = '1' then
+                                        data <= (not acc) & temp_d;
+                                    else
+                                        data <= (acc) & temp_d;                                    
+                                    end if;
+                                else
+                                    data <= temp_d;
+                                end if;
+                                start <= '1';
+                                state <= WAIT_SENDER;
+                            else
+                                start <= '0';
+                            end if;
+                        when WAIT_SENDER =>
+                            if busy = '1' then
+                                start <= '0';
+                                state <= EOF;
+                            end if;
+                        when EOF =>
+                            state <= IDLE;
+                    end case;
+                end if;
             end if;
     end process clocking;
 end architecture RTL;
